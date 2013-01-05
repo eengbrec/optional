@@ -247,4 +247,13 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val r1 = "arg     AnArgumentTypeWithALongName                     -arg <AnArgumentTypeWithALongName>"
     checkUsageMsg(new Test9, mh, Some(th), List(r1))
   }
+  
+  class <=>(ev: String) extends TestApp {
+    def main(arg: String) {
+      arg should be (ev)
+    }
+  }
+  test("usage message header on class with symbolic name") {
+    checkUsageMessageHeader("<=>: <arg: String>", new <=>("hello"))
+  }
 }
