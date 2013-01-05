@@ -91,10 +91,22 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
   test("usage message header for just Option arguments") {
     checkUsageMessageHeader("Test2: [options]", new Test2)
   }
+  
+  def checkUsageMsg(app: TestApp, header: String, tableHeader: Option[String], rows: Seq[String]) {
+    val expected = header + tableHeader.map(v => "\n" + v + "\n").getOrElse("") + rows.mkString("\n")
+    val mm = Application.findMainMethod(app)
+    val args = Application.extractArgs(mm.symbol)
+    val r = app.usageMessage(args)
+    r should be (expected)
+  }
+  
   test("usage message for just Option arguments") {
     val header = "Test2: [options]"
-    val namedTableHeader = ""
-    
+    val namedTableHeader = "Name    Type      Default Value    Usage"
+    val row1 = "opt1    Int                        -opt1 <Int>"
+    val row2 = "opt2    String                     -opt2 <String>"
+    val Test2 = new Test2
+    checkUsageMsg(Test2, header, Some(namedTableHeader), List(row1, row2))
   }
   
   class Test3(ev1: Int = 5, ev2: String = "hello") extends TestApp {
@@ -121,6 +133,13 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
   test("usage message header for just arguments with defaults") {
     checkUsageMessageHeader("Test3: [options]", new Test3)
   }
+  test("usage message for default arguments") {
+    val header = "Test3: [options]"
+    val th = "Name    Type      Default Value    Usage"
+    val r1 = "p1      Int       5                -p1 <Int>"
+    val r2 = "p2      String    hello            -p2 <String>"
+    checkUsageMsg(new Test3, header, Some(th), List(r1, r2))
+  }
   
   class Test4(ev1: Boolean = false, ev2: Boolean = false) extends TestApp {
     def main(p1: Boolean, p2: Boolean) {
@@ -143,11 +162,18 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val args = Array[String]("-p2")
     Test4.main(args)
   }
-  test("usage message beader for just boolean arguments") {
+  test("usage message header for just boolean arguments") {
     checkUsageMessageHeader("Test4: [options]", new Test4)
   }
+  test("usage message for just boolean arguments") {
+    val mh = "Test4: [options]"
+    val th = "Name    Type       Default Value    Usage"
+    val r1 = "p1      Boolean                     -p1"
+    val r2 = "p2      Boolean                     -p2"
+    checkUsageMsg(new Test4, mh, Some(th), List(r1, r2))
+  }
   
-  class Test5(ev1: Option[Boolean]) extends TestApp {
+  class Test5(ev1: Option[Boolean] = None) extends TestApp {
     def main(p1: Option[Boolean]) {
       p1 should be (ev1)
     }
@@ -162,6 +188,12 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val args = Array[String]()
     Test5.main(args)
   }
+  test("usage message for optional boolean argument") {
+    val h  = "Test5: [options]"
+    val th = "Name    Type       Default Value    Usage"
+    val r1 = "p1      Boolean                     -p1 <Boolean>"
+    checkUsageMsg(new Test5, h, Some(th), List(r1))
+  }
   
   class Test6(ev1: Int = 1, ev2: Boolean = false) extends TestApp {
     def main(pos1: Int, b1: Boolean) {
@@ -172,5 +204,47 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
   test("usage header with one positional and one boolean") {
     checkUsageMessageHeader("Test6: [options] <pos1: Int>", new Test6)
   }
+  test("usage message with one positional and one boolean") {
+    val mh = "Test6: [options] <pos1: Int>"
+    val th = "Name    Type       Default Value    Usage"
+    val r1 = "b1      Boolean                     -b1"
+    checkUsageMsg(new Test6, mh, Some(th), List(r1))
+  }
   
+  class Test7(ev1: String = "hello") extends TestApp {
+    def main(anArgumentWithAReallyLongName: String = ev1) {
+      anArgumentWithAReallyLongName should be (ev1)
+    }
+  }
+  test("usage message with long argument name") {
+    val mh = "Test7: [options]"
+    val th = "Name                             Type      Default Value    Usage"
+    val r1 = "anArgumentWithAReallyLongName    String    hello            -anArgumentWithAReallyLongName <String>"
+    checkUsageMsg(new Test7, mh, Some(th), List(r1))
+  }
+  
+  class Test8(ev1: String = "A Really Long Default Value") extends TestApp {
+    def main(arg: String = ev1) {
+      arg should be (ev1)
+    }
+  }
+  test("usage message with a long default value") {
+    val mh = "Test8: [options]"
+    val th = "Name    Type      Default Value                  Usage"
+    val r1 = "arg     String    A Really Long Default Value    -arg <String>"
+    checkUsageMsg(new Test8, mh, Some(th), List(r1))
+  }
+  
+  case class AnArgumentTypeWithALongName(s: String)
+  class Test9(ev1: Option[AnArgumentTypeWithALongName] = None) extends TestApp {
+    def main(arg: Option[AnArgumentTypeWithALongName]) {
+      arg should be (ev1)
+    }
+  }
+  test("usage message with a long argument type name") {
+    val mh = "Test9: [options]"
+    val th = "Name    Type                           Default Value    Usage"
+    val r1 = "arg     AnArgumentTypeWithALongName                     -arg <AnArgumentTypeWithALongName>"
+    checkUsageMsg(new Test9, mh, Some(th), List(r1))
+  }
 }

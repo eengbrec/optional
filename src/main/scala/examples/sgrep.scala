@@ -2,7 +2,7 @@ package optional.examples
 
 import scala.util.matching.Regex
 import java.io.File
-import optional.ArgInfo
+//import optional.ArgInfo
 
 //object sgrep extends optional.Application
 //{
