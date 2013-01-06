@@ -1,7 +1,9 @@
 package optional
 
-object MakeCommand
-{
+import scala.reflect.runtime.universe._
+import scala.reflect.runtime.currentMirror
+
+object MakeCommand extends Application {
   val template = """
 _%s() 
 {
@@ -22,20 +24,15 @@ alias %s='scala %s $*'
   def mkTemplate(name: String, className: String, opts: Seq[String]): String =
     template.format(name, opts mkString " ", name, name, name, className)
   
-  private def getArgNames(className: String) = {
-    val clazz = Class.forName(className + "$")
-    val singleton = clazz.getField("MODULE$").get()
-    val m = clazz.getMethod("argumentNames")
-    
-    (m invoke singleton).asInstanceOf[Array[String]] map ("--" + _)
-  }    
+
   
-  def _main(args: Array[String]): Unit = {
-    if (args == null || args.size != 2)
-      return println("Usage: mkCommand <name> <class>")
-      
-    val Array(scriptName, className) = args
-    val opts = getArgNames(className)
+  def main(scriptName: String, className: String) {
+    val modSymbol = currentMirror.staticModule(className)
+    val t = modSymbol.typeSignature
+    val mms = Application.findMainMethod(t)
+    val args = Application.extractArgs(mms)
+    
+    val opts = args.map(_.name)
 
     val txt = mkTemplate(scriptName, className, opts)
     val tmpfile = java.io.File.createTempFile(scriptName, "", null)
