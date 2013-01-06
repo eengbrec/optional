@@ -13,20 +13,6 @@ case class UsageError(msg: String) extends RuntimeException(msg)
 
 import scala.util.{ Try, Success, Failure }
 
-object Util {
-  
-  def cond[T](x: T)(f: PartialFunction[T, Boolean]) = (f isDefinedAt x) && f(x)
-  def condOpt[T,U](x: T)(f: PartialFunction[T, U]): Option[U] = if (f isDefinedAt x) Some(f(x)) else None
-  
-  def stringForType(tpe: Type): String = tpe.typeSymbol.name.decoded
-  
-  def typeArgs(tpe: Type) = tpe match {
-    case TypeRef(_, _, args) => args
-    case _ => Nil
-  }
-}
-import Util._
-
 private class TypeExtractor(val t: Type) {
   def unapply(x: Any): Option[Type] = x match {
     case tpe: Type if tpe =:= t => Some(t)
@@ -45,6 +31,10 @@ object OptionType {
       Some(arg)
     }
     case _ => None
+  }
+  def typeArgs(tpe: Type) = tpe match {
+    case TypeRef(_, _, args) => args
+    case _ => Nil
   }
 }
 
