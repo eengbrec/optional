@@ -284,7 +284,15 @@ trait Application {
       r
     }
     val parser = makeParser
-    val parsed = parser.parse(options, cmdline)
+    val parsed = Try(parser.parse(options, cmdline)) match {
+      case Success(v) => v
+      case Failure(e: acli.MissingArgumentException) => {
+        val opt = e.getOption
+        val msg = e.getMessage
+        throw UsageError(msg)
+      }
+      case Failure(e) => throw e
+    }
     for(name <- helpFlag if parsed.hasOption(name)) {
       val msg = usageMessage(args)
       throw UsageError(msg)

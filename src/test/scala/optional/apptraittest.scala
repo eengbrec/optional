@@ -91,6 +91,30 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
   test("usage message header for just Option arguments") {
     checkUsageMessageHeader("Test2: [options]", new Test2)
   }
+  test("malformed option argument") {
+    val Test2 = new Test2
+    val args = Array("-opt1", "blah", "-opt2", "2")
+    val thrown = evaluating {
+      Test2.main(args)
+    } should produce [UsageError]
+    thrown.msg should be ("Malformed argument opt1: the value \"blah\" could not be converted into a Int")
+  }
+  test("int option argument missing value") {
+    val Test2 = new Test2
+    val args = Array("-opt1", "-opt2", "2")
+    val thrown = evaluating {
+      Test2.main(args)
+    } should produce [UsageError]
+    thrown.msg should be ("Missing argument for option: opt1")
+  }
+  test("string option argument missing value") {
+    val Test2 = new Test2
+    val args = Array("-opt1", "1", "-opt2")
+    val thrown = evaluating {
+      Test2.main(args)
+    } should produce [UsageError]
+    thrown.msg should be ("Missing argument for option: opt2")
+  }
   
   def checkUsageMsg(app: TestApp, header: String, tableHeader: Option[String], rows: Seq[String]) {
     val expected = header + tableHeader.map(v => "\n" + v + "\n").getOrElse("") + rows.mkString("\n")
