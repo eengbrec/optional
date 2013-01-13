@@ -1,6 +1,5 @@
 package optional
 
-import java.io.File.separator
 import collection.mutable.HashSet
 
 import scala.reflect.runtime.universe._
@@ -9,7 +8,9 @@ import scala.reflect.runtime.currentMirror
 import org.apache.commons.{ cli => acli }
 
 case class DesignError(msg: String) extends Error(msg)
-case class UsageError(msg: String) extends RuntimeException(msg)
+case class UsageError(msg: String) extends RuntimeException(msg) {
+  if (msg.startsWith("optional.UsageError")) throw new RuntimeException("boom")
+}
 
 import scala.util.{ Try, Success, Failure }
 
@@ -69,7 +70,6 @@ sealed trait MainArg {
   def tpe: Type
   final def typeName = tpe.typeSymbol.name.decoded
   def isOptional: Boolean
-  def usage: Option[String]
   def index: Int
   
   def =:=(other: MainArg): Boolean = name == other.name && 
@@ -104,7 +104,6 @@ case class OptionArg(term: TermSymbol, index: Int) extends DefaultArg {
     case OptionType(t) => t
   }
   def isOptional = true
-  def usage = None
   val cliOption = new acli.Option(name, true, "TBD")
   def defaultValue(m: InstanceMirror) = None
 }
@@ -112,9 +111,8 @@ case class OptionArg(term: TermSymbol, index: Int) extends DefaultArg {
 case class ArgWithDefault(term: TermSymbol, index: Int) extends DefaultArg {
   val tpe = term.typeSignature
   def isOptional = false
-  def usage = None
   
-  val cliOption = new acli.Option(name, true, usage.getOrElse(""))
+  val cliOption = new acli.Option(name, true, "")
   
   def defaultValue(m: InstanceMirror): Any = {
     val baseMethodSym = term.owner
@@ -129,13 +127,11 @@ case class ArgWithDefault(term: TermSymbol, index: Int) extends DefaultArg {
 case class PositionalArg(term: TermSymbol, index: Int) extends MainArg {
   val tpe = term.typeSignature
   def isOptional = false
-  def usage = None
 }
 
 case class BoolArg(term: TermSymbol, index: Int) extends DefaultArg {
   val tpe = typeOf[Boolean]
   def isOptional = true
-  def usage = None
   val cliOption = new acli.Option(name, false, "include if true, omit if false")
   
   def defaultValue(m: InstanceMirror) = false
@@ -193,19 +189,23 @@ object Application {
   }
   
   def registerDefaultConversions(r: ConverterRegistry[String]) {
+	import ConverterRegistry._
+    r.register(makeConverter(java.lang.Integer.parseInt _))
+    r.register(makeConverter(java.lang.Double.parseDouble _))
+    r.register(makeConverter(java.lang.Long.parseLong _))
+    r.register(makeConverter(java.lang.Float.parseFloat _))
+    r.register(makeConverter(java.lang.Short.parseShort _))
+    r.register(makeConverter(java.lang.Boolean.parseBoolean _ ))
+    r.register(makeConverter(scala.math.BigDecimal(_)))
+    r.register(makeConverter(scala.math.BigInt(_)))
+    r.register(makeConverter(s => new java.io.File(s)))
     r.register { s => 
-      Try(java.lang.Integer.parseInt(s)) match {
-        case Success(i) => i
-        case Failure(e) => {
-          val msg = "the value \"%s\" could not be converted into an integer".format(s)
-          throw new NumberFormatException(msg).initCause(e)
-        }
-      }       
-    }
-    r.register(s => java.lang.Double.parseDouble(s))
-    r.register(s => java.lang.Boolean.parseBoolean(s))
-    r.register(s => scala.math.BigDecimal(s))
-    r.register(s => scala.math.BigInt(s))
+      if (s.length == 1) s(0)
+      else {
+        val msg = "cannot convert a string \"%s\" of length %d to a character".format(s, s.length)
+        throw new RuntimeException(msg) 
+      }
+	}
     r.register(s => s)
   }
   
@@ -338,7 +338,12 @@ trait Application {
         val failures = processedArgs.collect {
           case Failure(e) => e
         }
-        val msgs = failures.mkString("\n")
+        val msgs = failures.map { f =>
+          f match {
+            case UsageError(msg) => msg
+            case e => e.getMessage 
+          }
+        }.mkString("\n")
         val msg = if(failures.size > 1) "%d errors occurred while processing arguments\n%s".format(failures.size, msgs) else msgs
         throw UsageError(msg)
       }
@@ -355,8 +360,13 @@ trait Application {
   
   private def convertArg(cf: String => Any, arg: MainArg, sv: String) = Try(cf(sv)) match {
     case Success(r) => Success(r)
+    case Failure(_ @ UsageError(m)) => {
+      val msg = "Malformed argument %s: %s".format(arg.name, m)
+      val ue = UsageError(msg)
+      Failure(ue)
+    }
     case Failure(e) => {
-      val msg = "Malformed argument value \"%s\" for %s of type %s:\n\t%s\n\tUsage: %s".format(sv, arg.name, arg.typeName, e.getMessage, arg.usage)
+      val msg = "Malformed argument value \"%s\" for %s of type %s:\n\t%s".format(sv, arg.name, arg.typeName, e.getMessage)
       val ue = UsageError(msg)
       Failure(ue)
     }

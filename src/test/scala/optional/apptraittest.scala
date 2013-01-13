@@ -38,7 +38,7 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     val thrown = evaluating {
       Test1.main(args)
     } should produce [UsageError]
-    //thrown.msg should be ("Malformed argument value \"one\" for pos1 of type Int:\nthe value \"one\" could not be converted into an integer\nUsage: <Int>")
+    thrown.msg should be ("Malformed argument pos1: the value \"one\" could not be converted into a Int")
   }
   test("test program name") {
     val Test1 = new Test1(1, "2")
