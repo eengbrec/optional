@@ -309,7 +309,7 @@ trait Application {
         registry.get(arg.tpe) match {
           case Some(cf) => {
             arg match {
-              case barg: BoolArg => Success(if (parsed.hasOption(barg.name)) true else false)
+              case barg: BoolArg => Success(parsed.hasOption(barg.name))
               case oarg: OptionArg => if (parsed.hasOption(oarg.name)) {
                 val sv = parsed.getOptionValue(oarg.name)
                 convertArg(s => Some(cf(s)), oarg, sv) 
