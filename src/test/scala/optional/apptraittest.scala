@@ -115,6 +115,14 @@ class ApplicationTraitTestSuite extends FunSuite with ShouldMatchers {
     } should produce [UsageError]
     thrown.msg should be ("Missing argument for option: opt2")
   }
+  test("incorrect option name") {
+    val Test2 = new Test2
+    val args = Array("-opt3", "3", "-opt1", "1", "-opt2", "2")
+    val thrown = evaluating {
+      Test2.main(args)
+    } should produce [UsageError]
+    thrown.msg should be ("Unrecognized option: -opt3")
+  }
   
   def checkUsageMsg(app: TestApp, header: String, tableHeader: Option[String], rows: Seq[String]) {
     val expected = header + tableHeader.map(v => "\n" + v + "\n").getOrElse("") + rows.mkString("\n")

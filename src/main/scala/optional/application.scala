@@ -291,6 +291,9 @@ trait Application {
         val msg = e.getMessage
         throw UsageError(msg)
       }
+      case Failure(e: acli.UnrecognizedOptionException) => {
+        throw UsageError(e.getMessage)
+      }
       case Failure(e) => throw e
     }
     for(name <- helpFlag if parsed.hasOption(name)) {
